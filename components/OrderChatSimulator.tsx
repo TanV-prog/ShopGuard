@@ -180,7 +180,7 @@ export function OrderChatSimulator({
                       <span className="font-semibold text-slate-900 dark:text-white">
                         {entry.step}
                       </span>
-                      <span className="font-mono text-[10px] text-slate-400 tabular-nums">
+                      <span className="font-mono text-[10px] text-slate-400 tabular-nums" suppressHydrationWarning>
                         {new Date(entry.timestamp).toLocaleTimeString()}
                       </span>
                     </div>

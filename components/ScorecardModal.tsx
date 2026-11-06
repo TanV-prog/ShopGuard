@@ -14,7 +14,7 @@ export function ScorecardModal({ isOpen, onClose }: ScorecardModalProps) {
   const [suites, setSuites] = useState<TestSuiteResult[]>(() => runAllShopGuardTests().suites);
   const [selectedSuiteIndex, setSelectedSuiteIndex] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
-  const [lastRunTimestamp, setLastRunTimestamp] = useState<string>(() => new Date().toLocaleTimeString());
+  const [lastRunTimestamp, setLastRunTimestamp] = useState<string>('Latest Check');
 
   if (!isOpen) return null;
 

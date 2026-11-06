@@ -8,7 +8,6 @@ import { OrderSummaryCard } from '@/components/OrderSummaryCard';
 import { PayPalSandboxModal } from '@/components/PayPalSandboxModal';
 import { CatalogModal } from '@/components/CatalogModal';
 import { ScorecardModal } from '@/components/ScorecardModal';
-import { DevpostDocsModal } from '@/components/DevpostDocsModal';
 import { CustomValueStudio } from '@/components/CustomValueStudio';
 import { DEFAULT_PRODUCTS } from '@/lib/products';
 import { Product, ProcessedOrder } from '@/lib/types';
@@ -29,69 +28,20 @@ import {
 } from 'lucide-react';
 
 export default function ShopGuardHome() {
-  const [darkMode, setDarkMode] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('shopguard_theme');
-      if (stored === 'dark') return true;
-      if (stored === 'light') return false;
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-    return false;
-  });
+  const [darkMode, setDarkMode] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<'assistant' | 'values' | 'catalog'>('assistant');
 
-  const [activeTab, setActiveTab] = useState<'assistant' | 'values' | 'catalog' | 'docs'>('assistant');
-
-  // Custom Value State with LocalStorage Persistence
-  const [catalog, setCatalog] = useState<Product[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('shopguard_custom_catalog');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-        } catch {}
-      }
-    }
-    return DEFAULT_PRODUCTS;
-  });
-
-  const [spendingLimit, setSpendingLimit] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('shopguard_spending_limit');
-      if (saved) {
-        const parsed = parseFloat(saved);
-        if (!isNaN(parsed) && parsed > 0) return parsed;
-      }
-    }
-    return DEFAULT_SPENDING_LIMIT;
-  });
-
-  const [ownerPin, setOwnerPin] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('shopguard_owner_pin');
-      if (saved && saved.trim()) return saved.trim();
-    }
-    return DEFAULT_OWNER_PIN;
-  });
-
-  const [customPresets, setCustomPresets] = useState<{ label: string; tag: string; text: string }[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('shopguard_custom_presets');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) return parsed;
-        } catch {}
-      }
-    }
-    return [
-      {
-        label: 'Custom Honey ($25.00)',
-        tag: 'User Value',
-        text: '2 jars of raw forest honey for Alex',
-      },
-    ];
-  });
+  // Custom Value State with Deterministic Initial Values for Clean SSR Hydration
+  const [catalog, setCatalog] = useState<Product[]>(DEFAULT_PRODUCTS);
+  const [spendingLimit, setSpendingLimit] = useState<number>(DEFAULT_SPENDING_LIMIT);
+  const [ownerPin, setOwnerPin] = useState<string>(DEFAULT_OWNER_PIN);
+  const [customPresets, setCustomPresets] = useState<{ label: string; tag: string; text: string }[]>([
+    {
+      label: 'Custom Honey ($25.00)',
+      tag: 'User Value',
+      text: '2 jars of raw forest honey for Alex',
+    },
+  ]);
 
   // Order state
   const [message, setMessage] = useState('2 kg mangoes and a pickle jar for Ravi');
@@ -105,9 +55,49 @@ export default function ShopGuardHome() {
   // Other modals
   const [isCatalogModalOpen, setIsCatalogModalOpen] = useState(false);
   const [isScorecardOpen, setIsScorecardOpen] = useState(false);
-  const [isDocsOpen, setIsDocsOpen] = useState(false);
 
-  // Synchronize document class with darkMode
+  // Safe client-side mount hydration for saved user settings
+  useEffect(() => {
+    try {
+      const storedTheme = localStorage.getItem('shopguard_theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const shouldDark = storedTheme === 'dark' || (!storedTheme && prefersDark);
+
+      const savedCatalog = localStorage.getItem('shopguard_custom_catalog');
+      const savedLimit = localStorage.getItem('shopguard_spending_limit');
+      const savedPin = localStorage.getItem('shopguard_owner_pin');
+      const savedPresets = localStorage.getItem('shopguard_custom_presets');
+
+      // Defer to next frame to prevent cascading render in effect body
+      requestAnimationFrame(() => {
+        if (shouldDark) {
+          setDarkMode(true);
+          document.documentElement.classList.add('dark');
+        }
+        if (savedCatalog) {
+          try {
+            const parsed = JSON.parse(savedCatalog);
+            if (Array.isArray(parsed) && parsed.length > 0) setCatalog(parsed);
+          } catch {}
+        }
+        if (savedLimit) {
+          const parsed = parseFloat(savedLimit);
+          if (!isNaN(parsed) && parsed > 0) setSpendingLimit(parsed);
+        }
+        if (savedPin && savedPin.trim()) setOwnerPin(savedPin.trim());
+        if (savedPresets) {
+          try {
+            const parsed = JSON.parse(savedPresets);
+            if (Array.isArray(parsed)) setCustomPresets(parsed);
+          } catch {}
+        }
+      });
+    } catch (e) {
+      console.warn('LocalStorage hydration load warning:', e);
+    }
+  }, []);
+
+  // Synchronize document class whenever darkMode changes
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -159,12 +149,10 @@ export default function ShopGuardHome() {
     }
   };
 
-  const handleSelectNavTab = (tab: 'assistant' | 'values' | 'catalog' | 'docs') => {
+  const handleSelectNavTab = (tab: 'assistant' | 'values' | 'catalog') => {
     setActiveTab(tab);
     if (tab === 'catalog') {
       setIsCatalogModalOpen(true);
-    } else if (tab === 'docs') {
-      setIsDocsOpen(true);
     }
   };
 
@@ -362,12 +350,6 @@ export default function ShopGuardHome() {
                   <PlusCircle className="h-3.5 w-3.5 text-[#005b96] dark:text-[#b3cde0]" />
                   <span>Create Your Own Value</span>
                 </button>
-                <button
-                  onClick={() => setIsDocsOpen(true)}
-                  className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-                >
-                  <span>Devpost Docs</span>
-                </button>
               </div>
             </div>
 
@@ -387,35 +369,6 @@ export default function ShopGuardHome() {
                 <div className="font-semibold">ShopGuard Artisan Foods · Custom Merchant Values Enabled</div>
                 <div className="text-[11px] text-white/80">Interactive PayPal Sandbox & Gemini API merchant assistant</div>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Live Color Testing Bar for #b3cde0 and #005b96 */}
-        <div className="rounded-2xl border border-[#b3cde0] bg-gradient-to-r from-[#b3cde0]/20 via-white to-[#b3cde0]/10 p-4 dark:border-[#005b96]/60 dark:from-[#005b96]/20 dark:via-slate-900 dark:to-slate-900 transition-colors shadow-sm">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-3">
-              <span className="font-bold text-[#005b96] dark:text-[#b3cde0] uppercase tracking-wider text-[11px]">
-                Active Color Test
-              </span>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 dark:border-slate-800 dark:bg-slate-800 shadow-xs">
-                  <span className="h-3.5 w-3.5 rounded-md bg-[#005b96] border border-white/40 inline-block shadow-xs" />
-                  <span className="font-mono font-bold text-slate-800 dark:text-slate-200">#005b96</span>
-                  <span className="text-[10px] text-slate-400">Deep Blue</span>
-                </div>
-                <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 dark:border-slate-800 dark:bg-slate-800 shadow-xs">
-                  <span className="h-3.5 w-3.5 rounded-md bg-[#b3cde0] border border-slate-300 inline-block shadow-xs" />
-                  <span className="font-mono font-bold text-slate-800 dark:text-slate-200">#b3cde0</span>
-                  <span className="text-[10px] text-slate-400">Ice Blue</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-slate-300">
-              <span className="font-semibold text-emerald-700 dark:text-emerald-400">6.13:1 Contrast (WCAG AA & AAA)</span>
-              <span aria-hidden="true">·</span>
-              <span>Applied to brand buttons, active tabs, swatches & borders</span>
             </div>
           </div>
         </div>
@@ -517,13 +470,6 @@ export default function ShopGuardHome() {
             </button>
             <span aria-hidden="true">·</span>
             <button
-              onClick={() => setIsDocsOpen(true)}
-              className="hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
-            >
-              Devpost Write-up
-            </button>
-            <span aria-hidden="true">·</span>
-            <button
               onClick={() => setIsCatalogModalOpen(true)}
               className="hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
             >
@@ -557,11 +503,6 @@ export default function ShopGuardHome() {
       <ScorecardModal
         isOpen={isScorecardOpen}
         onClose={() => setIsScorecardOpen(false)}
-      />
-
-      <DevpostDocsModal
-        isOpen={isDocsOpen}
-        onClose={() => setIsDocsOpen(false)}
       />
     </div>
   );

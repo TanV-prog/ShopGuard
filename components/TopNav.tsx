@@ -1,13 +1,13 @@
 'use client';
 
 import React from 'react';
-import { ShieldCheck, Moon, Sun, PlayCircle, BookOpen, ShoppingBag, Settings2 } from 'lucide-react';
+import { ShieldCheck, Moon, Sun, PlayCircle } from 'lucide-react';
 
 interface TopNavProps {
   darkMode: boolean;
   onToggleDarkMode: () => void;
-  activeTab: 'assistant' | 'values' | 'catalog' | 'docs';
-  onSelectTab: (tab: 'assistant' | 'values' | 'catalog' | 'docs') => void;
+  activeTab: 'assistant' | 'values' | 'catalog';
+  onSelectTab: (tab: 'assistant' | 'values' | 'catalog') => void;
   onOpenTestRunner: () => void;
 }
 
@@ -29,15 +29,9 @@ export function TopNav({
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#005b96] text-[#b3cde0] border border-[#b3cde0]/40 shadow-sm transition-all group-hover:scale-105">
             <ShieldCheck className="h-5 w-5" />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white whitespace-nowrap shrink-0">
-              ShopGuard
-            </span>
-            <span className="hidden lg:inline-flex items-center gap-1.5 rounded-full border border-[#b3cde0] bg-[#b3cde0]/20 px-2 py-0.5 text-[10px] font-semibold text-[#005b96] dark:text-[#b3cde0] dark:bg-[#005b96]/30">
-              <span className="inline-block h-2 w-2 rounded-full bg-[#005b96] border border-white" />
-              <span>Palette #005b96 / #b3cde0</span>
-            </span>
-          </div>
+          <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white whitespace-nowrap shrink-0">
+            ShopGuard
+          </span>
         </button>
 
         {/* Zone 2: 4 clean single-line nav links */}
@@ -71,16 +65,6 @@ export function TopNav({
             }`}
           >
             Price Catalog
-          </button>
-          <button
-            onClick={() => onSelectTab('docs')}
-            className={`whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
-              activeTab === 'docs'
-                ? 'text-[#005b96] dark:text-[#b3cde0] font-bold border-b-2 border-[#005b96] dark:border-[#b3cde0] pb-0.5'
-                : 'text-slate-600 hover:text-[#005b96] dark:text-slate-400 dark:hover:text-[#b3cde0]'
-            }`}
-          >
-            Devpost Docs
           </button>
         </nav>
 

@@ -3,14 +3,20 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { DEFAULT_PRODUCTS } from '@/lib/products';
 import { RawOrderItem, Product } from '@/lib/types';
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
+function getAiClient(): GoogleGenAI | null {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey.trim() === '') {
+    return null;
+  }
+  return new GoogleGenAI({
+    apiKey,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      },
     },
-  },
-});
+  });
+}
 
 /**
  * Dynamic fallback parser using deterministic NLP regex patterns.
@@ -133,10 +139,15 @@ CUSTOMER MESSAGE TO PARSE:
     let attempt = 0;
     let callSucceeded = false;
 
-    if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY') {
+    const aiClient = getAiClient();
+    if (aiClient) {
       while (attempt <= maxRetries && !callSucceeded) {
         try {
-          const response = await ai.models.generateContent({
+          const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('AI request timeout')), 4000)
+          );
+
+          const generatePromise = aiClient.models.generateContent({
             model: 'gemini-3.8-flash',
             contents: prompt,
             config: {
@@ -155,6 +166,7 @@ CUSTOMER MESSAGE TO PARSE:
             },
           });
 
+          const response = await Promise.race([generatePromise, timeoutPromise]);
           rawAiText = response.text || '[]';
           const parsed = JSON.parse(rawAiText);
           if (Array.isArray(parsed)) {
