@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI, Type } from '@google/genai';
 import { DEFAULT_PRODUCTS } from '@/lib/products';
-import { RawOrderItem } from '@/lib/types';
+import { RawOrderItem, Product } from '@/lib/types';
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -13,83 +13,69 @@ const ai = new GoogleGenAI({
 });
 
 /**
- * Fallback parser using deterministic NLP regex patterns.
+ * Dynamic fallback parser using deterministic NLP regex patterns.
+ * Supports any default or custom products defined in the merchant catalog.
  * Ensures the application remains 100% resilient if the Gemini API quota is exhausted
  * or when offline testing is conducted.
  */
-function fallbackLocalParser(message: string): RawOrderItem[] {
+function fallbackLocalParser(message: string, catalog: Product[] = DEFAULT_PRODUCTS): RawOrderItem[] {
   const cleanMsg = message.toLowerCase();
   const results: RawOrderItem[] = [];
+  const matchedIds = new Set<string>();
 
-  // Patterns for each default catalog item
-  const patterns: { id: string; regexes: RegExp[] }[] = [
-    {
-      id: 'mangoes',
-      regexes: [
-        /(\d+)\s*(?:kg|kilos?|kgs?|boxes?|packs?)?\s*(?:of\s*)?(?:alphonso\s*)?mango(?:es)?/i,
-        /mango(?:es)?\s*(?:x\s*|:\s*)?(\d+)/i,
-      ],
-    },
-    {
-      id: 'pickle',
-      regexes: [
-        /(\d+)\s*(?:jars?|bottles?|packs?)?\s*(?:of\s*)?(?:mango\s*)?pickle/i,
-        /pickle\s*(?:jar)?\s*(?:x\s*|:\s*)?(\d+)/i,
-        /a\s+pickle\s+jar/i,
-      ],
-    },
-    {
-      id: 'ghee',
-      regexes: [
-        /(\d+)\s*(?:jars?|bottles?|tins?|kg)?\s*(?:of\s*)?(?:a2\s*|desi\s*|cow\s*)?ghee/i,
-        /ghee\s*(?:x\s*|:\s*)?(\d+)/i,
-        /a\s+jar\s+of\s+ghee/i,
-      ],
-    },
-    {
-      id: 'saffron',
-      regexes: [
-        /(\d+)\s*(?:boxes?|packs?|grams?|g)?\s*(?:of\s*)?(?:kashmiri\s*)?saffron/i,
-        /saffron\s*(?:x\s*|:\s*)?(\d+)/i,
-      ],
-    },
-    {
-      id: 'chai_mix',
-      regexes: [
-        /(\d+)\s*(?:packs?|pouches?|boxes?)?\s*(?:of\s*)?(?:masala\s*)?chai(?:\s*mix)?/i,
-        /chai(?:\s*mix)?\s*(?:x\s*|:\s*)?(\d+)/i,
-      ],
-    },
-    {
-      id: 'basmati',
-      regexes: [
-        /(\d+)\s*(?:kg|kilos?|bags?)?\s*(?:of\s*)?(?:royal\s*|aged\s*)?basmati(?:\s*rice)?/i,
-        /basmati\s*(?:rice)?\s*(?:x\s*|:\s*)?(\d+)/i,
-      ],
-    },
-    {
-      id: 'turmeric',
-      regexes: [
-        /(\d+)\s*(?:packs?|pouches?|bags?)?\s*(?:of\s*)?(?:organic\s*|lakadong\s*)?turmeric/i,
-        /turmeric\s*(?:x\s*|:\s*)?(\d+)/i,
-      ],
-    },
-  ];
+  for (const product of catalog) {
+    const id = product.id.toLowerCase();
+    const nameClean = product.name.toLowerCase().replace(/[^a-z0-9 ]/g, ' ');
+    const nameWords = nameClean.split(/\s+/).filter(w => w.length > 2);
+    const unitClean = product.unit.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-  for (const { id, regexes } of patterns) {
-    for (const rx of regexes) {
-      const match = cleanMsg.match(rx);
-      if (match) {
-        let qty = 1;
-        if (match[1]) {
-          const parsed = parseInt(match[1], 10);
-          if (!isNaN(parsed) && parsed > 0) {
-            qty = parsed;
-          }
-        }
-        results.push({ id, qty });
-        break;
+    // Build search keywords from ID and primary name tokens
+    const keywords = [id, ...nameWords].filter((v, i, a) => a.indexOf(v) === i);
+    const keywordPattern = keywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+
+    // 1. Matches like: "2 kg mangoes", "3 jars of honey", "1 box saffron"
+    const regexQuantityFirst = new RegExp(
+      `(\\d+)\\s*(?:${unitClean}s?|kg|kilos?|kgs?|jars?|boxes?|packs?|tins?|bottles?|units?)?\\s*(?:of\\s*)?(?:[^\\n,.!?]{0,15})?\\b(${keywordPattern})\\b`,
+      'i'
+    );
+
+    // 2. Matches like: "mangoes x 2", "honey: 3"
+    const regexItemFirst = new RegExp(
+      `\\b(${keywordPattern})\\b\\s*(?:x|:|qty|-)?\\s*(\\d+)`,
+      'i'
+    );
+
+    // 3. Matches like: "a jar of honey", "a pickle jar", "one mango"
+    const regexSingular = new RegExp(
+      `\\b(?:a|an|one)\\s+(?:${unitClean}|jar|box|pack|bottle|tin|kg)?\\s*(?:of\\s*)?(?:[^\\n,.!?]{0,15})?\\b(${keywordPattern})\\b`,
+      'i'
+    );
+
+    const m1 = cleanMsg.match(regexQuantityFirst);
+    const m2 = cleanMsg.match(regexItemFirst);
+    const m3 = cleanMsg.match(regexSingular);
+
+    if (m1) {
+      const parsedQty = parseInt(m1[1], 10);
+      if (!isNaN(parsedQty) && parsedQty > 0 && !matchedIds.has(id)) {
+        results.push({ id, qty: parsedQty });
+        matchedIds.add(id);
+        continue;
       }
+    }
+
+    if (m2) {
+      const parsedQty = parseInt(m2[2], 10);
+      if (!isNaN(parsedQty) && parsedQty > 0 && !matchedIds.has(id)) {
+        results.push({ id, qty: parsedQty });
+        matchedIds.add(id);
+        continue;
+      }
+    }
+
+    if (m3 && !matchedIds.has(id)) {
+      results.push({ id, qty: 1 });
+      matchedIds.add(id);
     }
   }
 
@@ -193,7 +179,7 @@ CUSTOMER MESSAGE TO PARSE:
 
     // If Gemini was unavailable or not configured, use local deterministic NLP parser
     if (!callSucceeded) {
-      items = fallbackLocalParser(message);
+      items = fallbackLocalParser(message, catalog);
       methodUsed = 'deterministic_nlp_fallback';
     }
 

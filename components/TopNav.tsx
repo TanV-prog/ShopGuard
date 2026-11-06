@@ -6,8 +6,8 @@ import { ShieldCheck, Moon, Sun, PlayCircle, BookOpen, ShoppingBag, Settings2 } 
 interface TopNavProps {
   darkMode: boolean;
   onToggleDarkMode: () => void;
-  activeTab: 'assistant' | 'catalog' | 'guardrails' | 'docs' | 'tests';
-  onSelectTab: (tab: 'assistant' | 'catalog' | 'guardrails' | 'docs' | 'tests') => void;
+  activeTab: 'assistant' | 'values' | 'catalog' | 'docs';
+  onSelectTab: (tab: 'assistant' | 'values' | 'catalog' | 'docs') => void;
   onOpenTestRunner: () => void;
 }
 
@@ -24,14 +24,20 @@ export function TopNav({
         {/* Zone 1: Single text element wordmark */}
         <button
           onClick={() => onSelectTab('assistant')}
-          className="flex items-center gap-2 text-left focus:outline-none group cursor-pointer"
+          className="flex items-center gap-2.5 text-left focus:outline-none group cursor-pointer"
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950 transition-colors">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#005b96] text-[#b3cde0] border border-[#b3cde0]/40 shadow-sm transition-all group-hover:scale-105">
             <ShieldCheck className="h-5 w-5" />
           </div>
-          <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white whitespace-nowrap shrink-0">
-            ShopGuard
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white whitespace-nowrap shrink-0">
+              ShopGuard
+            </span>
+            <span className="hidden lg:inline-flex items-center gap-1.5 rounded-full border border-[#b3cde0] bg-[#b3cde0]/20 px-2 py-0.5 text-[10px] font-semibold text-[#005b96] dark:text-[#b3cde0] dark:bg-[#005b96]/30">
+              <span className="inline-block h-2 w-2 rounded-full bg-[#005b96] border border-white" />
+              <span>Palette #005b96 / #b3cde0</span>
+            </span>
+          </div>
         </button>
 
         {/* Zone 2: 4 clean single-line nav links */}
@@ -40,38 +46,38 @@ export function TopNav({
             onClick={() => onSelectTab('assistant')}
             className={`whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
               activeTab === 'assistant'
-                ? 'text-slate-900 dark:text-white font-semibold'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                ? 'text-[#005b96] dark:text-[#b3cde0] font-bold border-b-2 border-[#005b96] dark:border-[#b3cde0] pb-0.5'
+                : 'text-slate-600 hover:text-[#005b96] dark:text-slate-400 dark:hover:text-[#b3cde0]'
             }`}
           >
             Order Assistant
           </button>
           <button
+            onClick={() => onSelectTab('values')}
+            className={`whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
+              activeTab === 'values'
+                ? 'text-[#005b96] dark:text-[#b3cde0] font-bold border-b-2 border-[#005b96] dark:border-[#b3cde0] pb-0.5'
+                : 'text-slate-600 hover:text-[#005b96] dark:text-slate-400 dark:hover:text-[#b3cde0]'
+            }`}
+          >
+            Create Your Value
+          </button>
+          <button
             onClick={() => onSelectTab('catalog')}
             className={`whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
               activeTab === 'catalog'
-                ? 'text-slate-900 dark:text-white font-semibold'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                ? 'text-[#005b96] dark:text-[#b3cde0] font-bold border-b-2 border-[#005b96] dark:border-[#b3cde0] pb-0.5'
+                : 'text-slate-600 hover:text-[#005b96] dark:text-slate-400 dark:hover:text-[#b3cde0]'
             }`}
           >
-            Shop Catalog
-          </button>
-          <button
-            onClick={() => onSelectTab('guardrails')}
-            className={`whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
-              activeTab === 'guardrails'
-                ? 'text-slate-900 dark:text-white font-semibold'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            Guardrail Settings
+            Price Catalog
           </button>
           <button
             onClick={() => onSelectTab('docs')}
             className={`whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
               activeTab === 'docs'
-                ? 'text-slate-900 dark:text-white font-semibold'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                ? 'text-[#005b96] dark:text-[#b3cde0] font-bold border-b-2 border-[#005b96] dark:border-[#b3cde0] pb-0.5'
+                : 'text-slate-600 hover:text-[#005b96] dark:text-slate-400 dark:hover:text-[#b3cde0]'
             }`}
           >
             Devpost Docs
@@ -83,16 +89,16 @@ export function TopNav({
           <button
             onClick={onToggleDarkMode}
             aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-[#b3cde0]/20 hover:border-[#b3cde0] dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
 
           <button
             onClick={onOpenTestRunner}
-            className="flex items-center gap-2 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 active:bg-emerald-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            className="flex items-center gap-2 rounded-xl bg-[#005b96] px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#004775] active:bg-[#003860] border border-[#b3cde0]/40 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
-            <PlayCircle className="h-4 w-4" />
+            <PlayCircle className="h-4 w-4 text-[#b3cde0]" />
             <span>Run 97 Tests</span>
           </button>
         </div>

@@ -10,9 +10,11 @@ interface OrderChatSimulatorProps {
   onProcessOrder: () => void;
   isProcessing: boolean;
   currentOrder: ProcessedOrder | null;
+  customPresets?: { label: string; tag: string; text: string }[];
+  onOpenCustomValueStudio: () => void;
 }
 
-const PRESETS = [
+const DEFAULT_PRESETS = [
   {
     label: 'Standard Order ($16.50)',
     tag: 'Passes Guardrail',
@@ -46,7 +48,10 @@ export function OrderChatSimulator({
   onProcessOrder,
   isProcessing,
   currentOrder,
+  customPresets = [],
+  onOpenCustomValueStudio,
 }: OrderChatSimulatorProps) {
+  const allPresets = [...customPresets, ...DEFAULT_PRESETS];
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 transition-colors">
       {/* Title & Concept */}
@@ -67,11 +72,20 @@ export function OrderChatSimulator({
 
       {/* Preset Test Scenarios */}
       <div className="mt-4">
-        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">
-          Test Presets (Click to Load Scenario)
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+            Order Presets & Custom Values ({allPresets.length})
+          </div>
+          <button
+            type="button"
+            onClick={onOpenCustomValueStudio}
+            className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <span>+ Create Custom Value</span>
+          </button>
         </div>
         <div className="flex flex-wrap gap-2">
-          {PRESETS.map((preset, idx) => (
+          {allPresets.map((preset, idx) => (
             <button
               key={idx}
               type="button"
@@ -114,7 +128,7 @@ export function OrderChatSimulator({
           <button
             type="submit"
             disabled={isProcessing || !message.trim()}
-            className="flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-semibold text-white shadow hover:bg-slate-800 active:bg-slate-950 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white transition-colors cursor-pointer"
+            className="flex items-center gap-2 rounded-xl bg-[#005b96] px-5 py-2.5 text-xs font-semibold text-white shadow-md hover:bg-[#004775] active:bg-[#003860] border border-[#b3cde0]/40 disabled:opacity-50 transition-colors cursor-pointer"
           >
             {isProcessing ? (
               <>

@@ -3,6 +3,10 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
+  :root {
+    --brand-deep-blue: #005b96;
+    --brand-ice-blue: #b3cde0;
+  }
   * {
     border-color: var(--border, theme(colors.slate.200));
   }

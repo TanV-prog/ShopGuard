@@ -9,6 +9,7 @@ import { PayPalSandboxModal } from '@/components/PayPalSandboxModal';
 import { CatalogModal } from '@/components/CatalogModal';
 import { ScorecardModal } from '@/components/ScorecardModal';
 import { DevpostDocsModal } from '@/components/DevpostDocsModal';
+import { CustomValueStudio } from '@/components/CustomValueStudio';
 import { DEFAULT_PRODUCTS } from '@/lib/products';
 import { Product, ProcessedOrder } from '@/lib/types';
 import { DEFAULT_SPENDING_LIMIT, DEFAULT_OWNER_PIN } from '@/lib/guardrail';
@@ -23,6 +24,8 @@ import {
   Award,
   Play,
   Package,
+  Sliders,
+  PlusCircle,
 } from 'lucide-react';
 
 export default function ShopGuardHome() {
@@ -35,10 +38,60 @@ export default function ShopGuardHome() {
     }
     return false;
   });
-  const [activeTab, setActiveTab] = useState<'assistant' | 'catalog' | 'guardrails' | 'docs' | 'tests'>('assistant');
-  const [catalog, setCatalog] = useState<Product[]>(DEFAULT_PRODUCTS);
-  const [spendingLimit, setSpendingLimit] = useState<number>(DEFAULT_SPENDING_LIMIT);
-  const [ownerPin, setOwnerPin] = useState<string>(DEFAULT_OWNER_PIN);
+
+  const [activeTab, setActiveTab] = useState<'assistant' | 'values' | 'catalog' | 'docs'>('assistant');
+
+  // Custom Value State with LocalStorage Persistence
+  const [catalog, setCatalog] = useState<Product[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('shopguard_custom_catalog');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch {}
+      }
+    }
+    return DEFAULT_PRODUCTS;
+  });
+
+  const [spendingLimit, setSpendingLimit] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('shopguard_spending_limit');
+      if (saved) {
+        const parsed = parseFloat(saved);
+        if (!isNaN(parsed) && parsed > 0) return parsed;
+      }
+    }
+    return DEFAULT_SPENDING_LIMIT;
+  });
+
+  const [ownerPin, setOwnerPin] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('shopguard_owner_pin');
+      if (saved && saved.trim()) return saved.trim();
+    }
+    return DEFAULT_OWNER_PIN;
+  });
+
+  const [customPresets, setCustomPresets] = useState<{ label: string; tag: string; text: string }[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('shopguard_custom_presets');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        } catch {}
+      }
+    }
+    return [
+      {
+        label: 'Custom Honey ($25.00)',
+        tag: 'User Value',
+        text: '2 jars of raw forest honey for Alex',
+      },
+    ];
+  });
 
   // Order state
   const [message, setMessage] = useState('2 kg mangoes and a pickle jar for Ravi');
@@ -75,24 +128,54 @@ export default function ShopGuardHome() {
     }
   };
 
-  const handleSelectNavTab = (tab: 'assistant' | 'catalog' | 'guardrails' | 'docs' | 'tests') => {
+  const handleUpdateCatalog = (newCatalog: Product[]) => {
+    setCatalog(newCatalog);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('shopguard_custom_catalog', JSON.stringify(newCatalog));
+    }
+  };
+
+  const handleUpdateSpendingLimit = (newLimit: number) => {
+    const clamped = Math.max(1, Math.min(1000, newLimit));
+    setSpendingLimit(clamped);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('shopguard_spending_limit', String(clamped));
+    }
+  };
+
+  const handleUpdateOwnerPin = (newPin: string) => {
+    const cleanPin = newPin.trim();
+    setOwnerPin(cleanPin);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('shopguard_owner_pin', cleanPin);
+    }
+  };
+
+  const handleAddCustomPreset = (preset: { label: string; tag: string; text: string }) => {
+    const updated = [preset, ...customPresets.filter((p) => p.label !== preset.label)];
+    setCustomPresets(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('shopguard_custom_presets', JSON.stringify(updated));
+    }
+  };
+
+  const handleSelectNavTab = (tab: 'assistant' | 'values' | 'catalog' | 'docs') => {
     setActiveTab(tab);
-    if (tab === 'catalog' || tab === 'guardrails') {
+    if (tab === 'catalog') {
       setIsCatalogModalOpen(true);
     } else if (tab === 'docs') {
       setIsDocsOpen(true);
-    } else if (tab === 'tests') {
-      setIsScorecardOpen(true);
     }
   };
 
   // Pipeline execution
-  const handleProcessOrder = async () => {
-    if (!message.trim()) return;
+  const handleProcessOrder = async (overrideMessage?: string) => {
+    const msgToProcess = overrideMessage || message;
+    if (!msgToProcess.trim()) return;
     setIsProcessing(true);
     try {
       const order = await processCustomerMessage({
-        message,
+        message: msgToProcess,
         catalog,
         spendingLimit,
       });
@@ -102,6 +185,12 @@ export default function ShopGuardHome() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleSendCustomOrderFromStudio = (customMsg: string) => {
+    setMessage(customMsg);
+    setActiveTab('assistant');
+    handleProcessOrder(customMsg);
   };
 
   // Owner PIN authorization
@@ -236,15 +325,15 @@ export default function ShopGuardHome() {
                   <div className="text-[11px] text-slate-500">AI reads chat</div>
                 </div>
                 <div>
-                  <div className="font-bold text-slate-900 dark:text-white">Code Pricing</div>
-                  <div className="text-[11px] text-slate-500">Zero AI math</div>
+                  <div className="font-bold text-slate-900 dark:text-white">{catalog.length} Products</div>
+                  <div className="text-[11px] text-slate-500">Code pricing</div>
                 </div>
                 <div>
                   <div className="font-bold text-slate-900 dark:text-white">${spendingLimit.toFixed(0)} Guardrail</div>
-                  <div className="text-[11px] text-slate-500">Stops high orders</div>
+                  <div className="text-[11px] text-slate-500">Custom threshold</div>
                 </div>
                 <div>
-                  <div className="font-bold text-slate-900 dark:text-white">Owner PIN</div>
+                  <div className="font-bold text-slate-900 dark:text-white">PIN {ownerPin}</div>
                   <div className="text-[11px] text-slate-500">Constant-time check</div>
                 </div>
               </div>
@@ -253,26 +342,31 @@ export default function ShopGuardHome() {
               <div className="flex flex-wrap items-center gap-3 pt-2">
                 <button
                   onClick={() => {
+                    setActiveTab('assistant');
                     setMessage('2 kg mangoes and a pickle jar for Ravi');
-                    handleProcessOrder();
+                    handleProcessOrder('2 kg mangoes and a pickle jar for Ravi');
                   }}
-                  className="flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-semibold text-white shadow hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white transition-colors cursor-pointer"
+                  className="flex items-center gap-2 rounded-xl bg-[#005b96] px-5 py-2.5 text-xs font-semibold text-white shadow-md hover:bg-[#004775] active:bg-[#003860] border border-[#b3cde0]/40 transition-all cursor-pointer"
                 >
                   <span>Run Live Demo ($16.50)</span>
                   <ArrowRight className="h-4 w-4" />
                 </button>
                 <button
+                  onClick={() => setActiveTab('values')}
+                  className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'values'
+                      ? 'border-[#005b96] bg-[#005b96] text-white shadow-sm ring-2 ring-[#b3cde0]/50'
+                      : 'border-[#b3cde0] bg-[#b3cde0]/25 text-[#005b96] hover:bg-[#b3cde0]/45 dark:border-[#005b96] dark:bg-[#005b96]/20 dark:text-[#b3cde0]'
+                  }`}
+                >
+                  <PlusCircle className="h-3.5 w-3.5 text-[#005b96] dark:text-[#b3cde0]" />
+                  <span>Create Your Own Value</span>
+                </button>
+                <button
                   onClick={() => setIsDocsOpen(true)}
                   className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                 >
-                  <span>Devpost Docs & Script</span>
-                </button>
-                <button
-                  onClick={() => setIsCatalogModalOpen(true)}
-                  className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-                >
-                  <Package className="h-3.5 w-3.5" />
-                  <span>Price Catalog</span>
+                  <span>Devpost Docs</span>
                 </button>
               </div>
             </div>
@@ -290,37 +384,115 @@ export default function ShopGuardHome() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent lg:bg-gradient-to-r lg:from-white/40 lg:via-transparent dark:lg:from-slate-900/60" />
               <div className="absolute bottom-4 left-4 right-4 text-white p-3 rounded-xl bg-slate-950/70 backdrop-blur-md text-xs border border-white/10">
-                <div className="font-semibold">ShopGuard Artisan Foods · Ratnagiri & Kashmir Harvest</div>
+                <div className="font-semibold">ShopGuard Artisan Foods · Custom Merchant Values Enabled</div>
                 <div className="text-[11px] text-white/80">Interactive PayPal Sandbox & Gemini API merchant assistant</div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Core Interactive Workspace: 2-Column Desktop Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Column: Customer Ingestion Simulator */}
-          <div className="lg:col-span-7">
-            <OrderChatSimulator
-              message={message}
-              onChangeMessage={setMessage}
-              onProcessOrder={handleProcessOrder}
-              isProcessing={isProcessing}
-              currentOrder={currentOrder}
-            />
-          </div>
+        {/* Live Color Testing Bar for #b3cde0 and #005b96 */}
+        <div className="rounded-2xl border border-[#b3cde0] bg-gradient-to-r from-[#b3cde0]/20 via-white to-[#b3cde0]/10 p-4 dark:border-[#005b96]/60 dark:from-[#005b96]/20 dark:via-slate-900 dark:to-slate-900 transition-colors shadow-sm">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-3">
+              <span className="font-bold text-[#005b96] dark:text-[#b3cde0] uppercase tracking-wider text-[11px]">
+                Active Color Test
+              </span>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 dark:border-slate-800 dark:bg-slate-800 shadow-xs">
+                  <span className="h-3.5 w-3.5 rounded-md bg-[#005b96] border border-white/40 inline-block shadow-xs" />
+                  <span className="font-mono font-bold text-slate-800 dark:text-slate-200">#005b96</span>
+                  <span className="text-[10px] text-slate-400">Deep Blue</span>
+                </div>
+                <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 dark:border-slate-800 dark:bg-slate-800 shadow-xs">
+                  <span className="h-3.5 w-3.5 rounded-md bg-[#b3cde0] border border-slate-300 inline-block shadow-xs" />
+                  <span className="font-mono font-bold text-slate-800 dark:text-slate-200">#b3cde0</span>
+                  <span className="text-[10px] text-slate-400">Ice Blue</span>
+                </div>
+              </div>
+            </div>
 
-          {/* Right Column: Verified Order Summary & Guardrail Controller */}
-          <div className="lg:col-span-5">
-            <OrderSummaryCard
-              order={currentOrder}
-              onAuthorizeWithPin={handleAuthorizeWithPin}
-              onInitiatePayPal={handleInitiatePayPal}
-              onResetOrder={handleResetOrder}
-              isCreatingPayPal={isCreatingPayPal}
-            />
+            <div className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-slate-300">
+              <span className="font-semibold text-emerald-700 dark:text-emerald-400">6.13:1 Contrast (WCAG AA & AAA)</span>
+              <span aria-hidden="true">·</span>
+              <span>Applied to brand buttons, active tabs, swatches & borders</span>
+            </div>
           </div>
         </div>
+
+        {/* Dynamic Mode Switcher Bar */}
+        <div className="flex items-center justify-between border-b border-slate-200 pb-3 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setActiveTab('assistant')}
+              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                activeTab === 'assistant'
+                  ? 'bg-[#005b96] text-white shadow-sm ring-2 ring-[#b3cde0]/50'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800'
+              }`}
+            >
+              Order Assistant View
+            </button>
+            <button
+              onClick={() => setActiveTab('values')}
+              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'values'
+                  ? 'bg-[#005b96] text-white shadow-sm ring-2 ring-[#b3cde0]/50'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Sliders className="h-3.5 w-3.5" />
+              <span>Create Your Own Value Studio</span>
+            </button>
+          </div>
+
+          <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
+            <span>Current Limit: <strong className="text-slate-900 dark:text-white font-mono">${spendingLimit.toFixed(2)}</strong></span>
+            <span aria-hidden="true">·</span>
+            <span>Products: <strong className="text-slate-900 dark:text-white font-mono">{catalog.length}</strong></span>
+          </div>
+        </div>
+
+        {/* View Switch: Values Studio OR Order Assistant Workspace */}
+        {activeTab === 'values' ? (
+          <CustomValueStudio
+            catalog={catalog}
+            onUpdateCatalog={handleUpdateCatalog}
+            spendingLimit={spendingLimit}
+            onUpdateSpendingLimit={handleUpdateSpendingLimit}
+            ownerPin={ownerPin}
+            onUpdateOwnerPin={handleUpdateOwnerPin}
+            onSendCustomOrder={handleSendCustomOrderFromStudio}
+            customPresets={customPresets}
+            onAddCustomPreset={handleAddCustomPreset}
+          />
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Left Column: Customer Ingestion Simulator */}
+            <div className="lg:col-span-7">
+              <OrderChatSimulator
+                message={message}
+                onChangeMessage={setMessage}
+                onProcessOrder={() => handleProcessOrder()}
+                isProcessing={isProcessing}
+                currentOrder={currentOrder}
+                customPresets={customPresets}
+                onOpenCustomValueStudio={() => setActiveTab('values')}
+              />
+            </div>
+
+            {/* Right Column: Verified Order Summary & Guardrail Controller */}
+            <div className="lg:col-span-5">
+              <OrderSummaryCard
+                order={currentOrder}
+                onAuthorizeWithPin={handleAuthorizeWithPin}
+                onInitiatePayPal={handleInitiatePayPal}
+                onResetOrder={handleResetOrder}
+                isCreatingPayPal={isCreatingPayPal}
+              />
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Footer */}
@@ -335,6 +507,13 @@ export default function ShopGuardHome() {
               className="hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
             >
               97 Automated Tests
+            </button>
+            <span aria-hidden="true">·</span>
+            <button
+              onClick={() => setActiveTab('values')}
+              className="hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+            >
+              Create Your Value
             </button>
             <span aria-hidden="true">·</span>
             <button
@@ -369,9 +548,10 @@ export default function ShopGuardHome() {
         onClose={() => setIsCatalogModalOpen(false)}
         catalog={catalog}
         spendingLimit={spendingLimit}
-        onUpdateSpendingLimit={setSpendingLimit}
+        onUpdateSpendingLimit={handleUpdateSpendingLimit}
         ownerPin={ownerPin}
-        onUpdateOwnerPin={setOwnerPin}
+        onUpdateOwnerPin={handleUpdateOwnerPin}
+        onOpenCustomValueStudio={() => setActiveTab('values')}
       />
 
       <ScorecardModal

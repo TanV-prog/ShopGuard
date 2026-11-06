@@ -262,7 +262,7 @@ export function OrderSummaryCard({
             type="button"
             onClick={onInitiatePayPal}
             disabled={isCreatingPayPal}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#0070BA] py-3 text-xs font-bold text-white shadow-md hover:bg-[#005ea6] active:bg-[#004b87] disabled:opacity-50 transition-colors cursor-pointer"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#005b96] py-3 text-xs font-bold text-white shadow-md hover:bg-[#004775] active:bg-[#003860] border border-[#b3cde0]/40 disabled:opacity-50 transition-colors cursor-pointer"
           >
             {isCreatingPayPal ? (
               <>

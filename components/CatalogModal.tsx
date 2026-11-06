@@ -12,6 +12,7 @@ interface CatalogModalProps {
   onUpdateSpendingLimit: (newLimit: number) => void;
   ownerPin: string;
   onUpdateOwnerPin: (newPin: string) => void;
+  onOpenCustomValueStudio?: () => void;
 }
 
 export function CatalogModal({
@@ -22,6 +23,7 @@ export function CatalogModal({
   onUpdateSpendingLimit,
   ownerPin,
   onUpdateOwnerPin,
+  onOpenCustomValueStudio,
 }: CatalogModalProps) {
   if (!isOpen) return null;
 
@@ -41,13 +43,27 @@ export function CatalogModal({
               Shop Price List & Guardrail Settings
             </h2>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close catalog modal"
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-3">
+            {onOpenCustomValueStudio && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenCustomValueStudio();
+                }}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                <span>+ Create Your Value</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              aria-label="Close catalog modal"
+              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
